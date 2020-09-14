@@ -1,7 +1,7 @@
 '''
 作者: weimo
 创建日期: 2020-09-13 13:32:00
-上次编辑时间: 2020-09-14 12:58:25
+上次编辑时间: 2020-09-14 15:06:49
 一个人的命运啊,当然要靠自我奋斗,但是...
 '''
 
@@ -14,7 +14,7 @@ from argparse import ArgumentParser
 
 
 def format_time(tm: int) -> str:
-    return datetime.utcfromtimestamp(tm / 1000).strftime('%H:%M:%S.%f')[:-3]
+    return datetime.utcfromtimestamp(tm).strftime('%H:%M:%S.%f')[:-3]
 
 def bit_right_shift(ac, n):
     return (ac + 0x100000000) >> n if ac > 0 else ac >> n
@@ -39,6 +39,8 @@ def generate_vtt_file(fpath: Path, vtts: list):
             continue
         if lines[line_number]["currentTime"] < vtt["currentTime"]:
             lines[line_number]["currentTime"] = vtt["currentTime"]
+            if lines[line_number]["subtitle"] != vtt["subtitle"]:
+                lines[line_number]["subtitle"] = lines[line_number]["subtitle"] + vtt["subtitle"]
     line_values = list(lines.values())
     line_values = sorted(line_values, key=lambda line:line["startTime"])
     texts = [first_line]
@@ -121,6 +123,7 @@ class Viewer(object):
 class VTTParser(object):
     __BoxType = BoxType
     base_time = 0
+    presentations = list()
     raw_payload = bytes()
     saw_tfdt = False
     saw_trun = False
@@ -294,6 +297,8 @@ def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int):
     VTTP.box("iden", VTTP.allData)
     VTTP.box("sttg", VTTP.allData)
     result = VTTP.read(payload, partial_okay=False)
+    timescale = 1000
+    periodStart = 0
     if len(result) > 0:
         line, settings, payload = result
         if payload:
@@ -303,8 +308,8 @@ def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int):
             vtt = {
                 "line":int(line),
                 "file":path.name,
-                "startTime":startTime,
-                "currentTime":currentTime,
+                "startTime":periodStart + startTime / timescale,
+                "currentTime":periodStart + currentTime / timescale,
                 "settings":settings,
                 "subtitle":payload,
             }
@@ -314,6 +319,7 @@ def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int):
 def extract_work(path: Path, VP: VTTParser):
     currentTime = VP.base_time
     viewer = Viewer(VP.raw_payload)
+    tmp_vtt = []
     for presentation in VP.presentations:
         duration = presentation.sampleDuration or VP.default_duration
         if presentation.sampleCompositionTimeOffset:
@@ -341,13 +347,16 @@ def extract_work(path: Path, VP: VTTParser):
                     viewer.skip(payloadSize - 8)
             if duration:
                 if payload:
-                    return extract_sub(path, payload, startTime, currentTime)
+                    res = extract_sub(path, payload, startTime, currentTime)
+                    if res:
+                        tmp_vtt.append(res)
             else:
                 print("WVTT sample duration unknown, and no default found!")        
             if ~presentation.sampleSize or totalSize <= presentation.sampleSize:
                 pass
             else:
                 raise Exception("The samples do not fit evenly into the sample sizes given in the TRUN box!")
+    return tmp_vtt
 
 def extractor(fpath: Path):
     vtts = []
@@ -362,13 +371,12 @@ def extractor(fpath: Path):
         VP.fullBox("trun", VP.read_presentations)
         VP.box("mdat", VP.read_raw_payload)
         VP.read(path.read_bytes(), partial_okay=False)
-        vtt = extract_work(path, VP)
-        _ = None if vtt is None else vtts.append(vtt)
+        vtts += extract_work(path, VP)
     generate_vtt_file(fpath.with_suffix(".vtt"), vtts)
 
 if __name__ == "__main__":
     parser = ArgumentParser(
-        prog="dash mp4 vtt extractor v1.0@xhlove",
+        prog="dash mp4 vtt extractor v1.1@xhlove",
         description=(
             "Dash Mp4 VTT Subtitle Extractor, "
             "which is translated from shaka-player project by xhlove. "
