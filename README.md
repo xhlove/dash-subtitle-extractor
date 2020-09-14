@@ -2,7 +2,11 @@
 
 Ttranslated from shaka-player project by xhlove.
 
-# Usage
+# requirements
+
+> pip install argparse
+
+# usage
 
 ```bash
 usage: dash mp4 vtt extractor v1.0@xhlove [-h] [-p PATH]
@@ -15,8 +19,6 @@ optional arguments:
   -p PATH, --path PATH  Dash mp4 folder path
 ```
 
-# Output
-
-example:
+# output
 
 ![example](/output.png)
