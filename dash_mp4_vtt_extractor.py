@@ -1,7 +1,7 @@
 '''
 作者: weimo
 创建日期: 2020-09-13 13:32:00
-上次编辑时间: 2020-09-16 15:02:01
+上次编辑时间: 2020-09-17 02:49:12
 一个人的命运啊,当然要靠自我奋斗,但是...
 '''
 
@@ -37,10 +37,12 @@ def generate_vtt_file(fpath: Path, vtts: list):
                 }
             })
             continue
+        if lines[line_number]["startTime"] > vtt["startTime"]:
+            lines[line_number]["startTime"] = vtt["startTime"]
         if lines[line_number]["currentTime"] < vtt["currentTime"]:
             lines[line_number]["currentTime"] = vtt["currentTime"]
-            if lines[line_number]["subtitle"] != vtt["subtitle"]:
-                lines[line_number]["subtitle"] = lines[line_number]["subtitle"] + vtt["subtitle"]
+        if lines[line_number]["subtitle"] != vtt["subtitle"]:
+            lines[line_number]["subtitle"] = lines[line_number]["subtitle"] + vtt["subtitle"]
     line_values = list(lines.values())
     line_values = sorted(line_values, key=lambda line:line["startTime"])
     texts = [first_line]
@@ -51,7 +53,7 @@ def generate_vtt_file(fpath: Path, vtts: list):
         texts.append(text)
     fpath.write_text(separators.join(texts), encoding="utf-8")
     print(f"vtt file path is {str(fpath)}")
-    print(f"{len(texts)} lines of vtt subtitles were founded. (*^▽^*)")
+    print(f"{len(texts)-1} lines of vtt subtitles were founded. (*^▽^*)")
 
 class BoxType(Enum):
     BASIC_BOX = 0
@@ -328,7 +330,7 @@ def extract_work(path: Path, VP: VTTParser):
             startTime = currentTime
         currentTime = startTime + (duration or 0)
         totalSize = 0
-        while (presentation.sampleSize and totalSize < presentation.sampleSize):
+        while True:
             # Read the payload size.
             payloadSize = viewer.readUint32()
             totalSize += payloadSize
@@ -352,10 +354,14 @@ def extract_work(path: Path, VP: VTTParser):
                         tmp_vtt.append(res)
             else:
                 print("WVTT sample duration unknown, and no default found!")        
-            if ~presentation.sampleSize or totalSize <= presentation.sampleSize:
+            if ~bool(presentation.sampleSize) or totalSize <= presentation.sampleSize:
                 pass
             else:
                 raise Exception("The samples do not fit evenly into the sample sizes given in the TRUN box!")
+            if presentation.sampleSize and totalSize < presentation.sampleSize:
+                continue
+            else:
+                break
     return tmp_vtt
 
 def extractor(fpath: Path):

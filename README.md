@@ -9,7 +9,7 @@ Ttranslated from shaka-player project by xhlove.
 # usage
 
 ```bash
-usage: dash mp4 vtt extractor v1.0@xhlove [-h] [-p PATH]
+usage: dash mp4 vtt extractor v1.1@xhlove [-h] [-p PATH]
 
 Dash Mp4 VTT Subtitle Extractor, which is translated from shaka-player project
 by xhlove. Report bug to vvtoolbox.dev@gmail.com
