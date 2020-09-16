@@ -16,7 +16,7 @@ by xhlove. Report bug to vvtoolbox.dev@gmail.com
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PATH, --path PATH  Dash mp4 folder path
+  -p PATH, --path PATH  dash mp4 folder path
 ```
 
 # output

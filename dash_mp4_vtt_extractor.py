@@ -1,7 +1,7 @@
 '''
 作者: weimo
 创建日期: 2020-09-13 13:32:00
-上次编辑时间: 2020-09-14 15:06:49
+上次编辑时间: 2020-09-16 15:02:01
 一个人的命运啊,当然要靠自我奋斗,但是...
 '''
 
@@ -381,12 +381,12 @@ if __name__ == "__main__":
             "Dash Mp4 VTT Subtitle Extractor, "
             "which is translated from shaka-player project by xhlove. "
             "Report bug to vvtoolbox.dev@gmail.com"
-            )
         )
+    )
     parser.add_argument("-p", "--path", help="Dash mp4 folder path")
     args = parser.parse_args()
     if args.path is None:
-        args.path = input("paste dash mp4 path plz:\n")
+        args.path = input("paste dash mp4 folder path plz:\n")
     fpath = Path(args.path).resolve()
     if fpath.exists():
         extractor(fpath)
