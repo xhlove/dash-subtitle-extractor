@@ -1,7 +1,8 @@
+  
 '''
 作者: weimo
 创建日期: 2020-09-13 13:32:00
-上次编辑时间: 2020-09-17 02:49:12
+上次编辑时间: 2020-12-16 22:23:40
 一个人的命运啊,当然要靠自我奋斗,但是...
 '''
 
@@ -11,13 +12,16 @@ from enum import Enum
 from pathlib import Path
 from datetime import datetime
 from argparse import ArgumentParser
+from argparse import Action
+
+TIMESCALE = 1000
 
 
 def format_time(tm: int) -> str:
     return datetime.utcfromtimestamp(tm).strftime('%H:%M:%S.%f')[:-3]
 
 def bit_right_shift(ac, n):
-    return (ac + 0x100000000) >> n if ac > 0 else ac >> n
+    return ((ac + 0x100000000) >> n) & 255 if ac > 0 else ac >> n
 
 def generate_vtt_file(fpath: Path, vtts: list):
     if len(vtts) == 0:
@@ -134,6 +138,7 @@ class VTTParser(object):
     def __init__(self):
         self.header_box_type = {}
         self.box_callback_func = {}
+        self.linenumber = None # type: int
 
     @staticmethod
     def children(box: ParsedBox):
@@ -293,22 +298,27 @@ class VTTParser(object):
         size = box.viewer.getLength() - box.viewer.getPosition()
         return box.viewer.readBytes(size)
 
-def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int):
+def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int, linenumber: int):
     VTTP = VTTParser()
     VTTP.box("payl", VTTP.allData)
     VTTP.box("iden", VTTP.allData)
     VTTP.box("sttg", VTTP.allData)
     result = VTTP.read(payload, partial_okay=False)
-    timescale = 1000
+    timescale = TIMESCALE
     periodStart = 0
     if len(result) > 0:
-        line, settings, payload = result
-        if payload:
-            line = line.decode("utf-8")
+        if len(result) == 1:
+            line = linenumber
+            settings = "line:90% align:middle"
+            payload = result[0].decode("utf-8")
+        else:
+            line, settings, payload = result
+            line = int(line.decode("utf-8"))
             settings = settings.decode("utf-8")
             payload = payload.decode("utf-8")
+        if payload:
             vtt = {
-                "line":int(line),
+                "line":line,
                 "file":path.name,
                 "startTime":periodStart + startTime / timescale,
                 "currentTime":periodStart + currentTime / timescale,
@@ -349,7 +359,8 @@ def extract_work(path: Path, VP: VTTParser):
                     viewer.skip(payloadSize - 8)
             if duration:
                 if payload:
-                    res = extract_sub(path, payload, startTime, currentTime)
+                    # print("payload is ->", payload)
+                    res = extract_sub(path, payload, startTime, currentTime, VP.linenumber)
                     if res:
                         tmp_vtt.append(res)
             else:
@@ -364,12 +375,14 @@ def extract_work(path: Path, VP: VTTParser):
                 break
     return tmp_vtt
 
-def extractor(fpath: Path):
+def extractor(fpath: Path, has_linenumber: bool):
     vtts = []
+    index = 1
     for path in fpath.iterdir():
         if path.suffix != ".mp4":
             continue
         VP = VTTParser()
+        if has_linenumber is False: VP.linenumber = index
         VP.box("moof", VP.children)
         VP.box("traf", VP.children)
         VP.fullBox("tfdt", VP.read_base_time)
@@ -377,12 +390,14 @@ def extractor(fpath: Path):
         VP.fullBox("trun", VP.read_presentations)
         VP.box("mdat", VP.read_raw_payload)
         VP.read(path.read_bytes(), partial_okay=False)
-        vtts += extract_work(path, VP)
+        _vtts = extract_work(path, VP)
+        if len(_vtts) > 0: index += 1
+        vtts += _vtts
     generate_vtt_file(fpath.with_suffix(".vtt"), vtts)
 
 if __name__ == "__main__":
     parser = ArgumentParser(
-        prog="dash mp4 vtt extractor v1.1@xhlove",
+        prog="dash mp4 vtt extractor v1.2@xhlove",
         description=(
             "Dash Mp4 VTT Subtitle Extractor, "
             "which is translated from shaka-player project by xhlove. "
@@ -390,11 +405,15 @@ if __name__ == "__main__":
         )
     )
     parser.add_argument("-p", "--path", help="Dash mp4 folder path")
+    parser.add_argument("-ts", "--timescale", default=1000, type=int, help="set video timescale, default is 1000")
+    parser.add_argument("-line", "--has-linenumber", action="store_true", help="use this option if your file has linenumber")
     args = parser.parse_args()
+    if args.timescale is not None:
+        TIMESCALE = args.timescale
     if args.path is None:
         args.path = input("paste dash mp4 folder path plz:\n")
     fpath = Path(args.path).resolve()
     if fpath.exists():
-        extractor(fpath)
+        extractor(fpath, args.has_linenumber)
     else:
         print(f"{str(fpath)} is not exists!")
