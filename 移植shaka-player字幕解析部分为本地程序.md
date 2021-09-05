@@ -66,7 +66,7 @@ try {
 
 第一步执行`npm install`命令
 
-然后将`shaka/debug/log.js`里面的`window.console && window.console.log.bind`改为`true`
+第二步将`shaka/debug/log.js`里面的`window.console && window.console.log.bind`改为`true`
 
 因为node没有`window`
 
