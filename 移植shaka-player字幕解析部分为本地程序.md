@@ -24,6 +24,10 @@
 
 这部分可以参考[mp4_vtt_parser_unit.js](https://github.com/google/shaka-player/blob/master/test/text/mp4_vtt_parser_unit.js)
 
+更多官方案例（PS 大多数时候看官方的测试用例可以学到很多东西）
+
+- https://github.com/google/shaka-player/blob/master/test/text
+
 这里简化了下，最终代码如下
 
 ```javascript
