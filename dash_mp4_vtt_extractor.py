@@ -2,11 +2,7 @@
 '''
 作者: weimo
 创建日期: 2020-09-13 13:32:00
-<<<<<<< HEAD
-上次编辑时间: 2020-12-16 22:23:40
-=======
-上次编辑时间: 2020-10-24 11:21:41
->>>>>>> f43230e22dbafb0862d740c7f53f7d898c53544a
+上次编辑时间: 2020-12-16 22:45:24
 一个人的命运啊,当然要靠自我奋斗,但是...
 '''
 
@@ -16,7 +12,6 @@ from enum import Enum
 from pathlib import Path
 from datetime import datetime
 from argparse import ArgumentParser
-from argparse import Action
 
 TIMESCALE = 1000
 
@@ -24,8 +19,10 @@ TIMESCALE = 1000
 def format_time(tm: int) -> str:
     return datetime.utcfromtimestamp(tm).strftime('%H:%M:%S.%f')[:-3]
 
+
 def bit_right_shift(ac, n):
     return ((ac + 0x100000000) >> n) & 255 if ac > 0 else ac >> n
+
 
 def generate_vtt_file(fpath: Path, vtts: list):
     if len(vtts) == 0:
@@ -52,7 +49,7 @@ def generate_vtt_file(fpath: Path, vtts: list):
         if lines[line_number]["subtitle"] != vtt["subtitle"]:
             lines[line_number]["subtitle"] = lines[line_number]["subtitle"] + vtt["subtitle"]
     line_values = list(lines.values())
-    line_values = sorted(line_values, key=lambda line:line["startTime"])
+    line_values = sorted(line_values, key=lambda line: line["startTime"])
     texts = [first_line]
     for line in line_values:
         startTime = format_time(line["startTime"])
@@ -63,19 +60,23 @@ def generate_vtt_file(fpath: Path, vtts: list):
     print(f"vtt file path is {str(fpath)}")
     print(f"{len(texts)-1} lines of vtt subtitles were founded. (*^▽^*)")
 
+
 class BoxType(Enum):
     BASIC_BOX = 0
     FULL_BOX = 1
 
+
 class Endianness(Enum):
     BIG_ENDIAN = 0
     LITTLE_ENDIAN = 1
+
 
 class ParsedTRUNSample(object):
     def __init__(self):
         self.sampleDuration = None
         self.sampleSize = None
         self.sampleCompositionTimeOffset = None
+
 
 class ParsedBox(object):
     def __init__(self, **kwargs):
@@ -86,6 +87,7 @@ class ParsedBox(object):
         self.viewer: memoryview = kwargs["viewer"]
         self.size: int = kwargs["size"]
         self.start: int = kwargs["start"]
+
 
 class Viewer(object):
 
@@ -114,7 +116,7 @@ class Viewer(object):
     def readBytes(self, size: int) -> bytes:
         if self.offset + size > self.length:
             raise Exception("Bad call to VttParser.readBytes")
-        binary = self.buffer[self.offset:self.offset+size].tobytes()
+        binary = self.buffer[self.offset:self.offset + size].tobytes()
         self.offset += size
         return binary
 
@@ -130,6 +132,7 @@ class Viewer(object):
     def has_more_data(self) -> bool:
         return self.offset < self.length
 
+
 class VTTParser(object):
     __BoxType = BoxType
     base_time = 0
@@ -139,6 +142,7 @@ class VTTParser(object):
     saw_trun = False
     saw_mdat = False
     default_duration = None
+
     def __init__(self):
         self.header_box_type = {}
         self.box_callback_func = {}
@@ -302,6 +306,7 @@ class VTTParser(object):
         size = box.viewer.getLength() - box.viewer.getPosition()
         return box.viewer.readBytes(size)
 
+
 def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int, linenumber: int):
     VTTP = VTTParser()
     VTTP.box("payl", VTTP.allData)
@@ -322,15 +327,16 @@ def extract_sub(path: Path, payload: bytes, startTime: int, currentTime: int, li
             payload = payload.decode("utf-8")
         if payload:
             vtt = {
-                "line":line,
-                "file":path.name,
-                "startTime":periodStart + startTime / timescale,
-                "currentTime":periodStart + currentTime / timescale,
-                "settings":settings,
-                "subtitle":payload,
+                "line": line,
+                "file": path.name,
+                "startTime": periodStart + startTime / timescale,
+                "currentTime": periodStart + currentTime / timescale,
+                "settings": settings,
+                "subtitle": payload,
             }
             # print(colorama.Fore.LIGHTBLUE_EX + f"____>>>>\n{json.dumps(vtt, ensure_ascii=False, indent=4)}")
             return vtt
+
 
 def extract_work(path: Path, VP: VTTParser):
     currentTime = VP.base_time
@@ -379,6 +385,7 @@ def extract_work(path: Path, VP: VTTParser):
                 break
     return tmp_vtt
 
+
 def extractor(fpath: Path, has_linenumber: bool):
     vtts = []
     index = 1
@@ -386,7 +393,8 @@ def extractor(fpath: Path, has_linenumber: bool):
         if path.suffix != ".mp4":
             continue
         VP = VTTParser()
-        if has_linenumber is False: VP.linenumber = index
+        if has_linenumber is False:
+            VP.linenumber = index
         VP.box("moof", VP.children)
         VP.box("traf", VP.children)
         VP.fullBox("tfdt", VP.read_base_time)
@@ -395,9 +403,11 @@ def extractor(fpath: Path, has_linenumber: bool):
         VP.box("mdat", VP.read_raw_payload)
         VP.read(path.read_bytes(), partial_okay=False)
         _vtts = extract_work(path, VP)
-        if len(_vtts) > 0: index += 1
+        if len(_vtts) > 0:
+            index += 1
         vtts += _vtts
     generate_vtt_file(fpath.with_suffix(".vtt"), vtts)
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(

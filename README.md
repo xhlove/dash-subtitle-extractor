@@ -2,6 +2,12 @@
 
 Ttranslated from shaka-player project by xhlove.
 
+# node本地移植版
+
+参考[移植shaka-player字幕解析部分为本地程序](移植shaka-player字幕解析部分为本地程序.md)
+
+目前完成了demo，适配ing
+
 # requirements
 
 > pip install argparse

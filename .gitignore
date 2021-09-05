@@ -1,4 +1,3 @@
-.vscode/*
-*.mp4
-*.zip
-*.mpd
+.vscode
+shaka/**/*.js
+node_modules
