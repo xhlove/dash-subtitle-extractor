@@ -25,6 +25,8 @@ node parser_compiled.js --init-segment=test/dashvtt_subtitle_WVTT_zh-TW/init.mp4
 - --init-segment 是init文件的路径
 - --segments-path 是分段文件所在的路径
 
+如果要用测试命令记得解压`dashvtt_subtitle_WVTT_zh-TW.zip`
+
 目前完成基本信息打印，转换为vtt以及适配ttml等适配ing
 
 ![](images/Snipaste_2021-09-05_21-27-47.png)
