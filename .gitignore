@@ -2,3 +2,4 @@
 shaka/**/*.js
 node_modules
 test/dashvtt_subtitle_WVTT_zh-TW
+test/ttml_test

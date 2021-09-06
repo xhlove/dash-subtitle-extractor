@@ -2,10 +2,16 @@ goog.module('parser');
 
 require("google-closure-library");
 goog.require("shaka.text.Mp4VttParser");
+goog.require('shaka.text.Mp4TtmlParser');
 const fs = require("fs");
 const path = require('path');
 const args = require('args-parser')(process.argv);
 
+let debug = false;
+if (args["debug"]){
+    debug = true;
+    console.info(`args => ${JSON.stringify(args)}`);
+}
 if (!args["init-segment"]){
     console.log(`--init-segment option is required`)
     process.exit()
@@ -24,10 +30,11 @@ if (!fs.existsSync(init_segment)){
     console.log(`segments folder path ${segments_path} is not exists`)
     process.exit()
 }
-let debug = false;
-if (args["debug"]){
-    debug = true;
-    console.info(`args => ${JSON.stringify(args)}`);
+let codecs = ["wvtt", "ttml"];
+let subtype = args["type"]
+if (!subtype || !codecs.includes(subtype)){
+    console.log(`must set --type option which is one of ${codecs}, not ${subtype}`);
+    process.exit()
 }
 
 function travel(dir, callback) {
@@ -55,14 +62,49 @@ function gentm(tm){
     return new Date(tm * 1000).toISOString().slice(11, -1);
 }
 
+function loop_nestedCues(lines, nestedCues){
+    let payload = "";
+    for (let i = 0; i < nestedCues.length; i++) {
+        let cue = nestedCues[i];
+        if (cue.nestedCues && cue.nestedCues.length > 0){
+            loop_nestedCues(lines, cue.nestedCues)
+        }
+        if (cue.payload != ""){
+            if (payload == ""){
+                payload = cue.payload;
+            }
+            else{
+                payload = `${payload} ${cue.payload}`;
+            }
+        }
+        // lines.push(cue);
+    }
+    let cue = nestedCues[0];
+    cue.payload = payload;
+    if(cue.payload != ""){
+        lines.push(cue);
+    }
+}
+
+let parser = null;
+
 try {
-    let parser = new shaka.text.Mp4VttParser();
+    switch (subtype) {
+        case "wvtt":
+            parser = new shaka.text.Mp4VttParser();
+            break;
+        case "ttml":
+            parser = new shaka.text.Mp4TtmlParser();
+            break;
+        default:
+            process.exit();
+    }
     
-    let vttInitSegment = new Uint8Array(fs.readFileSync(init_segment));
-    parser.parseInit(vttInitSegment);
+    let InitSegment = new Uint8Array(fs.readFileSync(init_segment));
+    parser.parseInit(InitSegment);
     let time = { periodStart: 0, segmentStart: 0, segmentEnd: 0 };
-    let count = 0;
     let lines = [];
+    let debug_contents = [];
     travel(segments_path, function (pathname) {
         // console.log(path.basename(pathname), pathname)
         let name = path.basename(pathname);
@@ -70,19 +112,28 @@ try {
         if (name == path.basename(init_segment)) return;
         // now only allow mp4 file
         if (!name.endsWith(".mp4")) return;
-        let vttSegment = new Uint8Array(fs.readFileSync(pathname));
-        let results = parser.parseMedia(vttSegment, time);
+        let Segment = new Uint8Array(fs.readFileSync(pathname));
+        let results = parser.parseMedia(Segment, time);
         // console.log(`${name} 解析完成`);
         for (let i = 0; i < results.length; i++) {
             let result = results[i];
             result.name = name
             if (debug){
-                console.log(`${count} ${result.name} ${result.startTime} ${result.endTime} ${result.payload}`);
+                debug_contents.push(JSON.stringify(result, null, 4));
             }
-            lines.push(result);
-            count += 1;
+            if (result.nestedCues && result.nestedCues.length > 0){
+                loop_nestedCues(lines, result.nestedCues)
+            }
+            if (result.payload != ""){
+                lines.push(result);
+            }
         }
     });
+    if (debug){
+        let content = debug_contents.join("\n-----------------\n");
+        fs.writeFileSync(`${path.basename(segments_path)}.log`, content, "utf-8");
+        console.log(`write debug log to ${path.basename(segments_path)}.log`)
+    }
     // 按startTime从小到大排序
     lines.sort(compare);
     // 去重
@@ -93,7 +144,12 @@ try {
     let line = lines[offset];
     while (offset < lines.length - 1){
         offset += 1;
+        // 跳过空的行
         let next_line = lines[offset];
+        if (line.payload == "") {
+            line = next_line;
+            continue
+        }
         if (line.payload == next_line.payload && line.endTime == next_line.startTime){
             line.endTime = next_line.endTime;
         }

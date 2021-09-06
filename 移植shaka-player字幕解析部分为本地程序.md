@@ -72,17 +72,45 @@ try {
 
 第三步在`shaka/util/xml_utils.js`的`class`之前，也就是`shaka.util.XmlUtils = class`前面加一句
 
-- `var { Node, DOMParser } = require('xmldom');`
+- `var { Node, DOMParser, Element } = require('xmldom');`
 
 ![](images/Snipaste_2021-09-05_20-04-25.png)
 
-第四步在`node_modules/xmldom/lib/dom-parser.js`末尾导出的地方加一句
+第四步在`node_modules/xmldom/lib/dom-parser.js`末尾导出的地方加三句
 
-![](images/Snipaste_2021-09-05_20-09-02.png)
+![](images/Snipaste_2021-09-06_23-44-22.png)
 
-- `exports.Node = require('./dom').Node;`
+```javascript
+exports.Node = require('./dom').Node;
+exports.Element = require('./dom').Element;
+exports.Document = require('./dom').Document;
+```
 
-然后执行下面的命令编译为一个单独的js
+第五步在`node_modules/xmldom/lib/dom.js`末尾导出的地方加两句
+
+![](images/Snipaste_2021-09-06_23-46-00.png)
+
+```javascript
+exports.Element = Element;
+exports.Document = Document;
+```
+
+第六步在`shaka/text/ttml_text_parser.js`开头加两句
+
+![](images/Snipaste_2021-09-06_23-49-58.png)
+
+```javascript
+var { Document } = require('xmldom');
+var doc = new Document();
+```
+
+然后把`const span = document.createElement('span');`的`document`改为`doc`
+
+![](images/Snipaste_2021-09-06_23-50-20.png)
+
+这样才能正常解析ttml
+
+现在可以执行下面的命令编译为一个单独的js了
 
 有兴趣可以参考`closure-library`官方文档，看看`hello world`的整体过程
 

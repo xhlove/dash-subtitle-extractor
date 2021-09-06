@@ -17,19 +17,27 @@ npx google-closure-compiler --js parser.js --js shaka/**/*.js --js=node_modules/
 使用命令
 
 ```bash
-node parser_compiled.js --init-segment=test/dashvtt_subtitle_WVTT_zh-TW/init.mp4 --segments-path=test/dashvtt_subtitle_WVTT_zh-TW
+node parser_compiled.js --init-segment=test/dashvtt_subtitle_WVTT_zh-TW/init.mp4 --segments-path=test/dashvtt_subtitle_WVTT_zh-TW --type=wvtt
+
+node parser_compiled.js --init-segment=test/ttml_test/000.mp4 --segments-path=test/ttml_test --type=ttml
 ```
 
 - **路径参数请不要使用反斜杠**
 - **参数后面必须跟=**
 - --init-segment 是init文件的路径
 - --segments-path 是分段文件所在的路径
+- --type 指定字幕类型 wvtt ttml 二选一
+- --debug 可以输出一些debug信息
 
-如果要用测试命令记得解压`dashvtt_subtitle_WVTT_zh-TW.zip`
+如果要用测试命令记得解压`dashvtt_subtitle_WVTT_zh-TW.zip`和`ttml_test.zip`
 
-目前完成基本信息打印，转换为vtt以及适配ttml等适配ing
+- wvtt
 
-![](images/Snipaste_2021-09-05_21-27-47.png)
+![](images/Snipaste_2021-09-06_22-11-33.png)
+
+- ttml
+
+![](images/Snipaste_2021-09-06_23-54-31.png)
 
 # requirements
 
