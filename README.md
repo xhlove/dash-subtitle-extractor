@@ -20,11 +20,13 @@ npx google-closure-compiler --js parser.js --js shaka/**/*.js --js=node_modules/
 node parser_compiled.js --init-segment=test/dashvtt_subtitle_WVTT_zh-TW/init.mp4 --segments-path=test/dashvtt_subtitle_WVTT_zh-TW --type=wvtt
 
 node parser_compiled.js --init-segment=test/ttml_test/000.mp4 --segments-path=test/ttml_test --type=ttml
+
+node parser_compiled.js --segments-path=test/ismttml_text_TTML_pol --type=ttml
 ```
 
 - **路径参数请不要使用反斜杠**
 - **参数后面必须跟=**
-- --init-segment 是init文件的路径
+- --init-segment 是init文件的路径 该选项不是必要的
 - --segments-path 是分段文件所在的路径
 - --type 指定字幕类型 wvtt ttml 二选一
 - --debug 可以输出一些debug信息

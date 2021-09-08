@@ -10,31 +10,36 @@ const args = require('args-parser')(process.argv);
 let debug = false;
 if (args["debug"]){
     debug = true;
-    console.info(`args => ${JSON.stringify(args)}`);
+    console.info(`[ info] args => ${JSON.stringify(args)}`);
 }
-if (!args["init-segment"]){
-    console.log(`--init-segment option is required`)
-    process.exit()
-}
+
 let init_segment = args["init-segment"]
-if (!fs.existsSync(init_segment)){
-    console.log(`init segment file ${init_segment} is not exists`)
+if (init_segment && !fs.existsSync(init_segment)){
+    console.log(`[error] init segment file ${init_segment} is not exists`)
     process.exit()
 }
 if (!args["segments-path"]){
-    console.log(`--segments-path option is required`)
+    console.log(`[error] --segments-path option is required`)
     process.exit()
 }
 let segments_path = args["segments-path"]
-if (!fs.existsSync(init_segment)){
-    console.log(`segments folder path ${segments_path} is not exists`)
+if (!fs.existsSync(segments_path)){
+    console.log(`[error] segments folder path ${segments_path} is not exists`)
     process.exit()
 }
 let codecs = ["wvtt", "ttml"];
 let subtype = args["type"]
 if (!subtype || !codecs.includes(subtype)){
-    console.log(`must set --type option which is one of ${codecs}, not ${subtype}`);
+    console.log(`[error] must set --type option which is one of ${codecs}, not ${subtype}`);
     process.exit()
+}
+let segment_time = args["segment-time"]
+if (!segment_time){
+    console.warn(`[ warn] --segment-time has been auto set to 60.0, set if needed. Calculation method: d / timescale`)
+    segment_time = 60.0;
+}
+else{
+    segment_time = Number.parseFloat(segment_time);
 }
 
 function travel(dir, callback) {
@@ -62,12 +67,12 @@ function gentm(tm){
     return new Date(tm * 1000).toISOString().slice(11, -1);
 }
 
-function loop_nestedCues(lines, nestedCues){
+function loop_nestedCues(lines, nestedCues, index){
     let payload = "";
     for (let i = 0; i < nestedCues.length; i++) {
         let cue = nestedCues[i];
         if (cue.nestedCues && cue.nestedCues.length > 0){
-            loop_nestedCues(lines, cue.nestedCues)
+            loop_nestedCues(lines, cue.nestedCues, index)
         }
         if (cue.payload != ""){
             if (payload == ""){
@@ -82,6 +87,7 @@ function loop_nestedCues(lines, nestedCues){
     let cue = nestedCues[0];
     cue.payload = payload;
     if(cue.payload != ""){
+        cue.startTime += segment_time * index
         lines.push(cue);
     }
 }
@@ -99,9 +105,11 @@ try {
         default:
             process.exit();
     }
-    
-    let InitSegment = new Uint8Array(fs.readFileSync(init_segment));
-    parser.parseInit(InitSegment);
+    if (init_segment){
+        let InitSegment = new Uint8Array(fs.readFileSync(init_segment));
+        parser.parseInit(InitSegment);
+    }
+    let index = 0;
     let time = { periodStart: 0, segmentStart: 0, segmentEnd: 0 };
     let lines = [];
     let debug_contents = [];
@@ -109,7 +117,7 @@ try {
         // console.log(path.basename(pathname), pathname)
         let name = path.basename(pathname);
         // skip init segment
-        if (name == path.basename(init_segment)) return;
+        if (init_segment && name == path.basename(init_segment)) return;
         // now only allow mp4 file
         if (!name.endsWith(".mp4")) return;
         let Segment = new Uint8Array(fs.readFileSync(pathname));
@@ -122,17 +130,19 @@ try {
                 debug_contents.push(JSON.stringify(result, null, 4));
             }
             if (result.nestedCues && result.nestedCues.length > 0){
-                loop_nestedCues(lines, result.nestedCues)
+                loop_nestedCues(lines, result.nestedCues, index)
             }
             if (result.payload != ""){
+                result.startTime += segment_time * index
                 lines.push(result);
             }
         }
+        index += 1;
     });
     if (debug){
         let content = debug_contents.join("\n-----------------\n");
         fs.writeFileSync(`${path.basename(segments_path)}.log`, content, "utf-8");
-        console.log(`write debug log to ${path.basename(segments_path)}.log`)
+        console.log(`[ info] write debug log to ${path.basename(segments_path)}.log`)
     }
     // 按startTime从小到大排序
     lines.sort(compare);
@@ -168,7 +178,7 @@ try {
         line = next_line;
     }
     if (debug){
-        console.log(`after reduce duplicated lines, now lines count is ${lines_fix.length}`)
+        console.log(`[ info] after reduce duplicated lines, now lines count is ${lines_fix.length}`)
     }
     // 先用列表放内容 最后join
     let contents = ["WEBVTT"];
@@ -178,8 +188,8 @@ try {
     }
     let content = contents.join("\n\n");
     fs.writeFileSync(`${path.basename(segments_path)}.vtt`, content, "utf-8");
-    console.log(`${lines_fix.length} lines of subtitle was founded. (*^▽^*)`)
-    console.log(`write to ${path.basename(segments_path)}.vtt`)
+    console.log(`[ info] ${lines_fix.length} lines of subtitle was founded. (*^▽^*)`)
+    console.log(`[ info] write to ${path.basename(segments_path)}.vtt`)
 } catch (err) {
     console.trace(err);
 }
