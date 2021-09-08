@@ -35,8 +35,13 @@ if (!subtype || !codecs.includes(subtype)){
 }
 let segment_time = args["segment-time"]
 if (!segment_time){
-    console.warn(`[ warn] --segment-time has been auto set to 60.0, set if needed. Calculation method: d / timescale`)
-    segment_time = 60.0;
+    if (subtype == "ttml"){
+        console.warn(`[ warn] --segment-time has been auto set to 60.0, set if needed. Calculation method: d / timescale`)
+        segment_time = 60.0;
+    }
+    else{
+        segment_time = 0;
+    }
 }
 else{
     segment_time = Number.parseFloat(segment_time);
