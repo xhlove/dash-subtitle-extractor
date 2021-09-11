@@ -1,4 +1,4 @@
-# dash mp4 vtt extractor
+# dash subtitle extractor
 
 Ttranslated from shaka-player project by xhlove.
 
@@ -26,7 +26,7 @@ node parser_compiled.js --segments-path=test/ismttml_text_TTML_pol --type=ttml
 
 - **路径参数请不要使用反斜杠**
 - **参数后面必须跟=**
-- --init-segment 是init文件的路径 该选项不是必要的
+- --init-segment 是init文件的路径 对于TTML该选项不是必要的
 - --segments-path 是分段文件所在的路径
 - --type 指定字幕类型 wvtt ttml 二选一
 - --debug 可以输出一些debug信息
@@ -48,16 +48,23 @@ node parser_compiled.js --segments-path=test/ismttml_text_TTML_pol --type=ttml
 # usage
 
 ```bash
-usage: dash mp4 vtt extractor v1.1@xhlove [-h] [-p PATH]
+usage: python -m pyshaka.main [OPTION]...
 
-Dash Mp4 VTT Subtitle Extractor, which is translated from shaka-player project
-by xhlove. Report bug to vvtoolbox.dev@gmail.com
+A tool that to parse subtitle embedded in DASH stream
 
 optional arguments:
   -h, --help            show this help message and exit
-  -p PATH, --path PATH  dash mp4 folder path
+  -debug, --debug       debug is needed
+  -init-path INIT_PATH, --init-path INIT_PATH
+                        init segment path
+  -segments-path SEGMENTS_PATH, --segments-path SEGMENTS_PATH
+                        segments folder path
+  -segment-time SEGMENT_TIME, --segment-time SEGMENT_TIME
+                        usually needed for ttml content, calculation method: d / timescale
 ```
 
-# output
+e.g.
 
-![example](/output.png)
+```bash
+python -m pyshaka.main --init-path "test/dashvtt_subtitle_WVTT_zh-TW/init.mp4" --segments-path "test/dashvtt_subtitle_WVTT_zh-TW"
+```

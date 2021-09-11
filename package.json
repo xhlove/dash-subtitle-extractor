@@ -2,10 +2,12 @@
   "name": "dash-subtitle-extractor",
   "version": "1.0.0",
   "license": "ISC",
+  "bin": "./parser.js",
   "devDependencies": {
     "args-parser": "^1.3.0",
     "google-closure-compiler": "^20210808.0.0",
     "google-closure-library": "^20210808.0.0",
+    "pkg": "^5.3.1",
     "xmldom": "^0.6.0"
   }
 }
