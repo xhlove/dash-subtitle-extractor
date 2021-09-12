@@ -93,6 +93,7 @@ function loop_nestedCues(lines, nestedCues, index){
     cue.payload = payload;
     if(cue.payload != ""){
         cue.startTime += segment_time * index
+        cue.endTime += segment_time * index
         lines.push(cue);
     }
 }
@@ -113,7 +114,11 @@ try {
     if (init_segment){
         let InitSegment = new Uint8Array(fs.readFileSync(init_segment));
         parser.parseInit(InitSegment);
+        // let time = { periodStart: 0, segmentStart: 0, segmentEnd: 0 };
+        // console.log("start call parseMedia");
+        // parser.parseMedia(new Uint8Array(fs.readFileSync("test/assets/vtt-segment.mp4")), time)
     }
+    // process.exit()
     let index = 0;
     let time = { periodStart: 0, segmentStart: 0, segmentEnd: 0 };
     let lines = [];
@@ -139,6 +144,7 @@ try {
             }
             if (result.payload != ""){
                 result.startTime += segment_time * index
+                result.endTime += segment_time * index
                 lines.push(result);
             }
         }

@@ -49,6 +49,7 @@ def loop_nestedCues(lines: List[str], nestedCues: List[Cue], index: int, segment
     if payload != '':
         cue.payload = payload
         cue.startTime += segment_time * index
+        cue.endTime += segment_time * index
         lines.append(cue)
 
 
@@ -111,6 +112,7 @@ def parse(args: CmdArgs):
                 loop_nestedCues(cues, cue.nestedCues, index, args.segment_time)
             if cue.payload != '':
                 cue.startTime += args.segment_time * index
+                cue.endTime += args.segment_time * index
                 cues.append(cue)
         index += 1
     # 按Cue.startTime从小到大排序
@@ -147,7 +149,7 @@ def parse(args: CmdArgs):
     for cue in cues_fix:
         contents.append(f'{gentm(cue.startTime)} --> {gentm(cue.endTime)}\n{cue.payload}')
     content = '\n\n'.join(contents)
-    segments_path.with_suffix(".vtt").write_text(content, encoding='utf-8')
+    segments_path.with_suffix(".2vtt").write_text(content, encoding='utf-8')
     log.info(f'{len(cues_fix)} lines of subtitle was founded. (*^▽^*)')
     log.info(f'write to {segments_path.with_suffix(".vtt").resolve()}')
 

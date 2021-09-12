@@ -4,12 +4,41 @@ from enum import Enum
 from typing import List, Union
 
 from pyshaka.text.Cue import Cue, CueRegion, units, direction, writingMode
-from pyshaka.text.Cue import textAlign, lineAlign, positionAlign, fontStyle, textDecoration
+from pyshaka.text.Cue import textAlign, lineAlign, positionAlign, displayAlign
+from pyshaka.text.Cue import fontStyle, textDecoration
 from pyshaka.util.TextParser import TimeContext
 from pyshaka.util.exceptions import InvalidXML, InvalidTextCue
 from pyshaka.log import log
 
 document = Document()
+
+
+class RateInfo_:
+    def __init__(self, frameRate: str, subFrameRate: str, frameRateMultiplier: str, tickRate: str):
+        try:
+            self.frameRate = float(frameRate)
+        except Exception:
+            self.frameRate = 30
+        try:
+            self.subFrameRate = float(subFrameRate)
+        except Exception:
+            self.subFrameRate = 1
+        try:
+            self.tickRate = float(tickRate)
+        except Exception:
+            self.tickRate = 0
+        if self.tickRate == 0:
+            if frameRate:
+                self.tickRate = self.frameRate * self.subFrameRate
+            else:
+                self.tickRate = 1
+        if frameRateMultiplier:
+            multiplierResults = re.findall('^(\d+) (\d+)$', frameRateMultiplier)
+            if len(multiplierResults) > 0:
+                numerator = float(multiplierResults[1])
+                denominator = float(multiplierResults[2])
+                multiplierNum = numerator / denominator
+                self.frameRate *= multiplierNum
 
 
 class TtmlTextParser:
@@ -72,13 +101,17 @@ class TtmlTextParser:
                 cueRegions.append(cueRegion)
 
         body = bodys[0]
-        if len([childNode for childNode in body.childNodes if childNode.tagName == 'p']) > 0:
+        if len([childNode for childNode in body.childNodes if isinstance(childNode, Element) and childNode.tagName == 'p']) > 0:
             raise InvalidTextCue('<p> can only be inside <div> in TTML')
         for divNode in body.childNodes:
+            if isinstance(divNode, Element) is False:
+                continue
             if divNode.tagName != 'div':
                 continue
             has_p = False
             for pChildren in divNode.childNodes:
+                if isinstance(pChildren, Element) is False:
+                    continue
                 if pChildren.tagName == 'span':
                     raise InvalidTextCue('<span> can only be inside <p> in TTML')
                 if pChildren.tagName == 'p':
@@ -99,7 +132,7 @@ class TtmlTextParser:
 
         if cueNode.nodeType == Node.TEXT_NODE:
             span = document.createElement('span') # tpye: Text
-            span.data = cueNode.data
+            span.appendChild(cueNode)
             cueElement = span
         else:
             assert cueNode.nodeType == Node.ELEMENT_NODE, 'nodeType should be ELEMENT_NODE!'
@@ -108,14 +141,19 @@ class TtmlTextParser:
 
         spaceStyle = cueElement.getAttribute('xml:space') or 'default' if whitespaceTrim else 'preserve'
         localWhitespaceTrim = spaceStyle == 'default'
-        hasTextContent = re.findall('\S', cueElement.data)
+        if cueElement.firstChild.nodeValue:
+            # hasTextContent = re.match('\S', cueElement.firstChild.nodeValue)
+            # \S 不匹配换行 但是js的test却会返回true
+            # 所以python这里会误判 那么strip下达到修复效果
+            hasTextContent = re.match('\S', cueElement.firstChild.nodeValue.strip())
+        else:
+            hasTextContent = False
         hasTimeAttributes = cueElement.hasAttribute('begin') or cueElement.hasAttribute('end') or cueElement.hasAttribute('dur')
         if not hasTimeAttributes and not hasTextContent and cueElement.tagName != 'br':
             if not isNested:
                 return None
             elif localWhitespaceTrim:
                 return None
-
         start, end = TtmlTextParser.parseTime_(cueElement, rateInfo)
         while parentElement and parentElement.nodeType == Node.ELEMENT_NODE and parentElement.tagName != 'tt':
             start, end = TtmlTextParser.resolveTime_(parentElement, rateInfo, start, end)
@@ -139,7 +177,8 @@ class TtmlTextParser:
                 flag = False
                 break
         if flag:
-            payload: str = cueElement.data
+            payload: str = cueElement.firstChild.nodeValue
+            # print("cueElement.textContent", payload)
             if localWhitespaceTrim:
                 payload = payload.strip()
                 payload = re.sub('\s+', ' ', payload)
@@ -165,14 +204,17 @@ class TtmlTextParser:
         if cellResolution:
             cue.cellResolution = cellResolution
 
-        regionElement = TtmlTextParser.getElementsFromCollection_(cueElement, 'region', regionElements, '')[0]
-        if regionElement and regionElement.getAttribute('xml:id'):
+        regionElements = TtmlTextParser.getElementsFromCollection_(cueElement, 'region', regionElements, '')
+        regionElement = None
+        if len(regionElements) > 0 and regionElements[0].getAttribute('xml:id'):
+            regionElement = regionElements[0]
             regionId = regionElement.getAttribute('xml:id')
             cue.region = [_ for _ in cueRegions if _.id == regionId][0]
         imageElement = None
         for nameSpace in smpteNsList_:
-            imageElement = TtmlTextParser.getElementsFromCollection_(cueElement, 'backgroundImage', metadataElements, '#', nameSpace)[0]
-            if imageElement:
+            imageElements = TtmlTextParser.getElementsFromCollection_(cueElement, 'backgroundImage', metadataElements, '#', nameSpace)
+            if len(imageElements) > 0:
+                imageElement = imageElements[0]
                 break
 
         isLeaf = len(nestedCues) == 0
@@ -190,30 +232,31 @@ class TtmlTextParser:
         return cue
 
     @staticmethod
-    def resolveTime_(parentElement, rateInfo, start, end):
+    def resolveTime_(parentElement, rateInfo: RateInfo_, start, end):
+        # 这里有可能存在bug
         parentTime = TtmlTextParser.parseTime_(parentElement, rateInfo)
 
         if start is None:
             # No start time of your own?  Inherit from the parent.
-            start = parentTime.start
+            start = parentTime[0]
         else:
             # Otherwise, the start time is relative to the parent's start time.
-            if parentTime.start is not None:
-                start += parentTime.start
+            if parentTime[0] is not None:
+                start += parentTime[0]
 
         if end is None:
             # No end time of your own?  Inherit from the parent.
-            end = parentTime.end
+            end = parentTime[1]
         else:
             # Otherwise, the end time is relative to the parent's _start_ time.
             # This is not a typo.  Both times are relative to the parent's _start_.
-            if parentTime.start is not None:
-                end += parentTime.start
+            if parentTime[0] is not None:
+                end += parentTime[0]
 
         return start, end
 
     @staticmethod
-    def parseTime_(element: Element, rateInfo):
+    def parseTime_(element: Element, rateInfo: RateInfo_):
         start = TtmlTextParser.parseTimeAttribute_(element.getAttribute('begin'), rateInfo)
         end = TtmlTextParser.parseTimeAttribute_(element.getAttribute('end'), rateInfo)
         duration = TtmlTextParser.parseTimeAttribute_(element.getAttribute('dur'), rateInfo)
@@ -222,17 +265,17 @@ class TtmlTextParser:
         return start, end
 
     @staticmethod
-    def parseFramesTime_(rateInfo, text):
+    def parseFramesTime_(rateInfo: RateInfo_, text):
         # 50t or 50.5t
         results = timeFramesFormat_.findall(text)
-        frames = int(results[0])
+        frames = float(results[0])
         return frames / rateInfo.frameRate
 
     @staticmethod
-    def parseTickTime_(rateInfo, text):
+    def parseTickTime_(rateInfo: RateInfo_, text):
         # 50t or 50.5t
         results = timeTickFormat_.findall(text)
-        ticks = int(results[0])
+        ticks = float(results[0])
         return ticks / rateInfo.tickRate
 
     @staticmethod
@@ -240,26 +283,35 @@ class TtmlTextParser:
         results = regex.findall(text)
         if len(results) == 0:
             return None
-        if results[0] == '':
+        if results[0][0] == '':
             return None
 
-        hours = int(results[0]) or 0
-        minutes = int(results[1]) or 0
-        seconds = int(results[2]) or 0
-        milliseconds = int(results[3]) or 0
+        hours = 0
+        minutes = 0
+        seconds = 0
+        milliseconds = 0
+        try:
+            hours = int(results[0][0])
+            minutes = int(results[0][1])
+            seconds = float(results[0][2])
+            milliseconds = float(results[0][3])
+        except Exception:
+            pass
+        # 对于 timeColonFormatMilliseconds_ 来说 这里是匹配不到 milliseconds 的
+        # 不过下一步计算的时候 由于seconds是小数 所以又修正了...
 
         return (milliseconds / 1000) + seconds + (minutes * 60) + (hours * 3600)
 
     @staticmethod
-    def parseColonTimeWithFrames_(rateInfo, text: str) -> int:
+    def parseColonTimeWithFrames_(rateInfo: RateInfo_, text: str) -> int:
         # 01:02:43:07 ('07' is frames) or 01:02:43:07.1 (subframes)
         results = timeColonFormatFrames_.findall(text)
 
-        hours = int(results[0])
-        minutes = int(results[1])
-        seconds = int(results[2])
-        frames = int(results[3])
-        subframes = int(results[4]) or 0
+        hours = int(results[0][0])
+        minutes = int(results[0][1])
+        seconds = int(results[0][2])
+        frames = int(results[0][3])
+        subframes = int(results[0][4]) or 0
 
         frames += subframes / rateInfo.subFrameRate
         seconds += frames / rateInfo.frameRate
@@ -267,26 +319,26 @@ class TtmlTextParser:
         return seconds + (minutes * 60) + (hours * 3600)
 
     @staticmethod
-    def parseTimeAttribute_(text: str, rateInfo):
+    def parseTimeAttribute_(text: str, rateInfo: RateInfo_):
         ret = None
-        if TtmlTextParser.timeColonFormatFrames_.test(text):
+        if timeColonFormatFrames_.match(text):
             ret = TtmlTextParser.parseColonTimeWithFrames_(rateInfo, text)
-        elif TtmlTextParser.timeColonFormat_.test(text):
-            ret = TtmlTextParser.parseTimeFromRegex_(TtmlTextParser.timeColonFormat_, text)
-        elif TtmlTextParser.timeColonFormatMilliseconds_.test(text):
-            ret = TtmlTextParser.parseTimeFromRegex_(TtmlTextParser.timeColonFormatMilliseconds_, text)
-        elif TtmlTextParser.timeFramesFormat_.test(text):
+        elif timeColonFormat_.match(text):
+            ret = TtmlTextParser.parseTimeFromRegex_(timeColonFormat_, text)
+        elif timeColonFormatMilliseconds_.match(text):
+            ret = TtmlTextParser.parseTimeFromRegex_(timeColonFormatMilliseconds_, text)
+        elif timeFramesFormat_.match(text):
             ret = TtmlTextParser.parseFramesTime_(rateInfo, text)
-        elif TtmlTextParser.timeTickFormat_.test(text):
+        elif timeTickFormat_.match(text):
             ret = TtmlTextParser.parseTickTime_(rateInfo, text)
-        elif TtmlTextParser.timeHMSFormat_.test(text):
-            ret = TtmlTextParser.parseTimeFromRegex_(TtmlTextParser.timeHMSFormat_, text)
+        elif timeHMSFormat_.match(text):
+            ret = TtmlTextParser.parseTimeFromRegex_(timeHMSFormat_, text)
         elif text:
             raise InvalidTextCue('Could not parse cue time range in TTML')
         return ret
 
     @staticmethod
-    def addStyle_(cue, cueElement, region, imageElement: Element, styles, isNested, isLeaf):
+    def addStyle_(cue, cueElement, region, imageElement: Element, styles: List[Element], isNested: bool, isLeaf: bool):
         shouldInheritRegionStyles = isNested or isLeaf
 
         _direction = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'direction', shouldInheritRegionStyles)
@@ -312,10 +364,10 @@ class TtmlTextParser:
         else:
             cue.textAlign = textAlign.START
 
-        displayAlign = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'displayAlign', shouldInheritRegionStyles)
-        if displayAlign:
-            assert displayAlign.__members__.get(displayAlign.upper()), f'{displayAlign.upper()} Should be in Cue.displayAlign values!'
-            cue.displayAlign = Cue.displayAlign[displayAlign.toUpperCase()]
+        _displayAlign = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'displayAlign', shouldInheritRegionStyles)
+        if _displayAlign:
+            assert displayAlign.__members__.get(_displayAlign.upper()), f'{_displayAlign.upper()} Should be in Cue.displayAlign values!'
+            cue.displayAlign = displayAlign[_displayAlign.upper()]
 
         color = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'color', shouldInheritRegionStyles)
         if color:
@@ -335,7 +387,7 @@ class TtmlTextParser:
 
         fontWeight = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'fontWeight', shouldInheritRegionStyles)
         if fontWeight and fontWeight == 'bold':
-            cue.fontWeight = Cue.fontWeight.BOLD
+            cue.fontWeight = fontWeight.BOLD
 
         wrapOption = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'wrapOption', shouldInheritRegionStyles)
         if wrapOption and wrapOption == 'noWrap':
@@ -351,14 +403,13 @@ class TtmlTextParser:
 
         if fontSize:
             isValidFontSizeUnit = unitValues_.match(fontSize) or percentValue_.match(fontSize)
-
-        if isValidFontSizeUnit:
-            cue.fontSize = fontSize
+            if isValidFontSizeUnit:
+                cue.fontSize = fontSize
 
         _fontStyle = TtmlTextParser.getStyleAttribute_(cueElement, region, styles, 'fontStyle', shouldInheritRegionStyles)
         if _fontStyle:
             assert fontStyle.__members__.get(_fontStyle.upper()), f'{_fontStyle.upper()} Should be in Cue.fontStyle values!'
-            cue.fontStyle = Cue.fontStyle[_fontStyle.upper()]
+            cue.fontStyle = fontStyle[_fontStyle.upper()]
 
         if imageElement:
             backgroundImageType = imageElement.getAttribute('imageType') or imageElement.getAttribute('imagetype')
@@ -393,17 +444,17 @@ class TtmlTextParser:
         for value in decoration.split(' '):
             if value == 'underline':
                 if textDecoration.UNDERLINE not in cue.textDecoration:
-                    cue.textDecoration.append(Cue.textDecoration.UNDERLINE)
+                    cue.textDecoration.append(textDecoration.UNDERLINE)
             elif value == 'noUnderline':
                 cue.textDecoration = [_ for _ in cue.textDecoration if textDecoration.UNDERLINE != _]
             elif value == 'lineThrough':
                 if textDecoration.LINE_THROUGH not in cue.textDecoration:
-                    cue.textDecoration.append(Cue.textDecoration.LINE_THROUGH)
+                    cue.textDecoration.append(textDecoration.LINE_THROUGH)
             elif value == 'noLineThrough':
                 cue.textDecoration = [_ for _ in cue.textDecoration if textDecoration.LINE_THROUGH != _]
             elif value == 'overline':
                 if textDecoration.OVERLINE not in cue.textDecoration:
-                    cue.textDecoration.append(Cue.textDecoration.OVERLINE)
+                    cue.textDecoration.append(textDecoration.OVERLINE)
             elif value == 'noOverline':
                 cue.textDecoration = [_ for _ in cue.textDecoration if textDecoration.OVERLINE != _]
 
@@ -427,9 +478,9 @@ class TtmlTextParser:
         globalResults = None
         if globalExtent:
             globalResults = percentValues_.findall(globalExtent) or pixelValues_.findall(globalExtent)
-        if len(globalResults) == 2:
-            globalWidth = int(globalResults[0])
-            globalHeight = int(globalResults[1])
+        if globalResults is not None and len(globalResults) == 2:
+            globalWidth = int(globalResults[0][0])
+            globalHeight = int(globalResults[0][1])
         else:
             globalWidth = None
             globalHeight = None
@@ -438,11 +489,11 @@ class TtmlTextParser:
 
         extent = TtmlTextParser.getStyleAttributeFromRegion_(regionElement, styles, 'extent')
         if extent:
-            percentage = TtmlTextParser.percentValues_.exec(extent)
-            results = percentage or TtmlTextParser.pixelValues_.exec(extent)
+            percentage = percentValues_.findall(extent)
+            results = percentage or pixelValues_.findall(extent)
             if results is not None:
-                region.width = int(results[1])
-                region.height = int(results[2])
+                region.width = int(results[0][0])
+                region.height = int(results[0][1])
 
                 if not percentage:
                     if globalWidth is not None:
@@ -462,8 +513,8 @@ class TtmlTextParser:
             percentage = percentValues_.findall(origin)
             results = percentage or pixelValues_.findall(origin)
             if len(results) > 0:
-                region.viewportAnchorX = int(results[0])
-                region.viewportAnchorY = int(results[1])
+                region.viewportAnchorX = int(results[0][0])
+                region.viewportAnchorY = int(results[0][1])
             if len(percentage) == 0:
                 if globalHeight is not None:
                     region.viewportAnchorY = region.viewportAnchorY * 100 / globalHeight
@@ -480,7 +531,7 @@ class TtmlTextParser:
         ttsNs = styleNs_
         ebuttsNs = styleEbuttsNs_
 
-        inheritedStyles = TtmlTextParser.getElementsFromCollection_(element, 'style', styles, prefix='') # tpye: List[Element]
+        inheritedStyles = TtmlTextParser.getElementsFromCollection_(element, 'style', styles, '') # tpye: List[Element]
 
         styleValue = None
         # The last value in our styles stack takes the precedence over the others
@@ -514,21 +565,21 @@ class TtmlTextParser:
     def getInheritedAttribute_(element: Element, attributeName: str, nsName: str):
         ret = None
         while element:
-            if element.getAttributeNS(nsName, attributeName):
-                ret = nsName
+            if nsName:
+                ret = element.getAttributeNS(nsName, attributeName)
             else:
                 ret = element.getAttribute(attributeName)
             if ret:
                 break
             parentNode = element.parentNode
             if isinstance(parentNode, Element):
-                element - parentNode
+                element = parentNode
             else:
                 break
         return ret
 
     @staticmethod
-    def getElementsFromCollection_(element: Element, attributeName: str, collection: list, prefixName, nsName):
+    def getElementsFromCollection_(element: Element, attributeName: str, collection: list, prefixName: str, nsName: str = None):
         items = []
         if not element or len(collection) < 1:
             return items
@@ -560,28 +611,9 @@ class TtmlTextParser:
         matches = re.findall('^(\d+) (\d+)$', cellResolution)
         if len(matches) == 0:
             return None
-        columns = int(matches[0])
-        rows = int(matches[1])
+        columns = int(matches[0][0])
+        rows = int(matches[0][1])
         return {'columns': columns, 'rows': rows}
-
-
-class RateInfo_:
-    def __init__(self, frameRate: str, subFrameRate: str, frameRateMultiplier: str, tickRate: str):
-        self.frameRate = float(frameRate) or 30
-        self.subFrameRate = int(subFrameRate) or 1
-        self.tickRate = int(tickRate)
-        if self.tickRate == 0:
-            if frameRate:
-                self.tickRate = self.frameRate * self.subFrameRate
-            else:
-                self.tickRate = 1
-        if frameRateMultiplier:
-            multiplierResults = re.findall('^(\d+) (\d+)$', frameRateMultiplier)
-            if len(multiplierResults) > 0:
-                numerator = float(multiplierResults[1])
-                denominator = float(multiplierResults[2])
-                multiplierNum = numerator / denominator
-                self.frameRate *= multiplierNum
 
 
 # 50.17% 10%
@@ -629,10 +661,10 @@ class textAlignToPositionAlign_(Enum):
     right = positionAlign.RIGHT
 
 
-parameterNs_ = 'http:#www.w3.org/ns/ttml#parameter'
-styleNs_ = 'http:#www.w3.org/ns/ttml#styling'
+parameterNs_ = 'http://www.w3.org/ns/ttml#parameter'
+styleNs_ = 'http://www.w3.org/ns/ttml#styling'
 styleEbuttsNs_ = 'urn:ebu:tt:style'
 smpteNsList_ = [
-    'http:#www.smpte-ra.org/schemas/2052-1/2010/smpte-tt',
-    'http:#www.smpte-ra.org/schemas/2052-1/2013/smpte-tt',
+    'http://www.smpte-ra.org/schemas/2052-1/2010/smpte-tt',
+    'http://www.smpte-ra.org/schemas/2052-1/2013/smpte-tt',
 ]
