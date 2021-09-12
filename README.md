@@ -55,12 +55,16 @@ A tool that to parse subtitle embedded in DASH stream
 optional arguments:
   -h, --help            show this help message and exit
   -debug, --debug       debug is needed
+  -type TYPE, --type TYPE
+                        subtitle codec, only support wvtt and ttml now
+  -timescale TIMESCALE, --timescale TIMESCALE
+                        set timescale manually if no init segment
   -init-path INIT_PATH, --init-path INIT_PATH
                         init segment path
   -segments-path SEGMENTS_PATH, --segments-path SEGMENTS_PATH
                         segments folder path
   -segment-time SEGMENT_TIME, --segment-time SEGMENT_TIME
-                        usually needed for ttml content, calculation method: d / timescale
+                        single segment duration, usually needed for ttml content, calculation method: d / timescale
 ```
 
 e.g.

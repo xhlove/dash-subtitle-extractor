@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 
 from pyshaka.util.TextParser import TimeContext
 from pyshaka.text.Mp4VttParser import Mp4VttParser
+from pyshaka.text.Mp4TtmlParser import Mp4TtmlParser
 from pyshaka.text.Cue import Cue
 from pyshaka.log import log
 
@@ -12,6 +13,7 @@ from pyshaka.log import log
 class CmdArgs:
     def __init__(self):
         self.debug = None # type: bool
+        self.type = None # type: str
         self.timescale = None # type: int
         self.init_path = None # type: str
         self.segments_path = None # type: str
@@ -22,6 +24,7 @@ def command_handler(args: CmdArgs):
     '''
     对命令参数进行校验和修正
     '''
+    assert args.type in ['wvtt', 'ttml'], f'not support {args.type} now'
     args.timescale = int(args.timescale)
     args.init_path = args.init_path.strip()
     args.segments_path = args.segments_path.strip()
@@ -73,14 +76,18 @@ def test_parse_mp4vtt():
     mp4vttparser.parseMedia(vttSegment, timecontext)
 
 
-def parse_mp4vtt(args: CmdArgs):
-
-    mp4vttparser = Mp4VttParser()
+def parse(args: CmdArgs):
+    if args.type == 'wvtt':
+        parser = Mp4VttParser()
+    elif args.type == 'ttml':
+        parser = Mp4TtmlParser()
+    else:
+        assert 1 == 0, 'never should be here'
     if args.init_path:
         init_path = Path(args.init_path)
-        mp4vttparser.parseInit(init_path.read_bytes())
+        parser.parseInit(init_path.read_bytes())
     else:
-        mp4vttparser.set_timescale(args.timescale)
+        parser.set_timescale(args.timescale)
     segments_path = Path(args.segments_path)
     time = TimeContext(**{'periodStart': 0, 'segmentStart': 0, 'segmentEnd': 0})
     index = 0
@@ -92,7 +99,7 @@ def parse_mp4vtt(args: CmdArgs):
             continue
         if init_path and segment_path.name == init_path.name:
             continue
-        _cues = mp4vttparser.parseMedia(segment_path.read_bytes(), time)
+        _cues = parser.parseMedia(segment_path.read_bytes(), time)
 
         for cue in _cues:
             if args.debug:
@@ -153,13 +160,14 @@ def main():
         add_help=True,
     )
     parser.add_argument('-debug', '--debug', action='store_true', help='debug is needed')
+    parser.add_argument('-type', '--type', default='wvtt', help='subtitle codec, only support wvtt and ttml now')
     parser.add_argument('-timescale', '--timescale', default='1000', help='set timescale manually if no init segment')
     parser.add_argument('-init-path', '--init-path', help='init segment path')
     parser.add_argument('-segments-path', '--segments-path', help='segments folder path')
     parser.add_argument('-segment-time', '--segment-time', default='0', help='single segment duration, usually needed for ttml content, calculation method: d / timescale')
     args = parser.parse_args() # type: CmdArgs
     command_handler(args)
-    parse_mp4vtt(args)
+    parse(args)
     # python -m pyshaka.main --init-path "test/dashvtt_subtitle_WVTT_zh-TW/init.mp4" --segments-path "test/dashvtt_subtitle_WVTT_zh-TW"
 
 
