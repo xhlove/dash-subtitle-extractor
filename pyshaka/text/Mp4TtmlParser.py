@@ -12,6 +12,9 @@ class Mp4TtmlParser:
     def __init__(self):
         self.parser_ = TtmlTextParser()
 
+    def set_timescale(self, timescale: int):
+        pass
+
     def parseInit(self, data: memoryview):
         '''
         这个函数不调用也没什么问题

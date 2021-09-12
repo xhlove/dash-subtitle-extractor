@@ -26,7 +26,8 @@ def command_handler(args: CmdArgs):
     '''
     assert args.type in ['wvtt', 'ttml'], f'not support {args.type} now'
     args.timescale = int(args.timescale)
-    args.init_path = args.init_path.strip()
+    if args.init_path:
+        args.init_path = args.init_path.strip()
     args.segments_path = args.segments_path.strip()
     args.segment_time = float(args.segment_time)
 
@@ -97,7 +98,7 @@ def parse(args: CmdArgs):
             continue
         if segment_path.suffix != '.mp4':
             continue
-        if init_path and segment_path.name == init_path.name:
+        if args.init_path and segment_path.name == init_path.name:
             continue
         _cues = parser.parseMedia(segment_path.read_bytes(), time)
 
@@ -160,7 +161,7 @@ def main():
         add_help=True,
     )
     parser.add_argument('-debug', '--debug', action='store_true', help='debug is needed')
-    parser.add_argument('-type', '--type', default='wvtt', help='subtitle codec, only support wvtt and ttml now')
+    parser.add_argument('-type', '--type', choices=['wvtt', 'ttml'], help='subtitle codec, only support wvtt and ttml now')
     parser.add_argument('-timescale', '--timescale', default='1000', help='set timescale manually if no init segment')
     parser.add_argument('-init-path', '--init-path', help='init segment path')
     parser.add_argument('-segments-path', '--segments-path', help='segments folder path')

@@ -53,7 +53,7 @@ class TtmlTextParser:
         if spaceStyle != 'default' and spaceStyle != 'preserve':
             raise InvalidXML(f'Invalid xml:space value: {spaceStyle}')
         whitespaceTrim = spaceStyle == 'default'
-        rateInfo = TtmlTextParser.RateInfo_(frameRate, subFrameRate, frameRateMultiplier, tickRate)
+        rateInfo = RateInfo_(frameRate, subFrameRate, frameRateMultiplier, tickRate)
         cellResolutionInfo = TtmlTextParser.getCellResolution_(cellResolution)
 
         metadatas = tt.getElementsByTagName('metadata') # type: List[Element]
