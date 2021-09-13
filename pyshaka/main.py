@@ -149,7 +149,7 @@ def parse(args: CmdArgs):
     for cue in cues_fix:
         contents.append(f'{gentm(cue.startTime)} --> {gentm(cue.endTime)}\n{cue.payload}')
     content = '\n\n'.join(contents)
-    segments_path.with_suffix(".2vtt").write_text(content, encoding='utf-8')
+    segments_path.with_suffix(".vtt").write_text(content, encoding='utf-8')
     log.info(f'{len(cues_fix)} lines of subtitle was founded. (*^▽^*)')
     log.info(f'write to {segments_path.with_suffix(".vtt").resolve()}')
 
