@@ -41,7 +41,7 @@ class Mp4TtmlParser:
         if not sawSTPP:
             raise InvalidMp4TTML(f'is sawSTPP? {sawSTPP}')
 
-    def parseMedia(self, data: memoryview, time: TimeContext) -> List[Cue]:
+    def parseMedia(self, data: memoryview, time: TimeContext, dont_raise: bool = True) -> List[Cue]:
 
         def mdat_callback(data: bytes):
             nonlocal payload
@@ -57,6 +57,8 @@ class Mp4TtmlParser:
         mp4parser = mp4parser.parse(data, partialOkay=False)
 
         if not sawMDAT:
-            raise InvalidMp4TTML(f'is sawMDAT? {sawMDAT}')
-
+            if dont_raise:
+                return payload
+            else:
+                raise InvalidMp4TTML(f'is sawMDAT? {sawMDAT}')
         return payload

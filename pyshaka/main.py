@@ -96,18 +96,23 @@ def parse(args: CmdArgs):
     cues = []
     for segment_path in segments_path.iterdir():
         if segment_path.is_dir():
+            if args.debug:
+                log.debug(f'{segment_path} is not a file, skip it')
             continue
         if segment_path.suffix not in ['.mp4', '.m4s', '.dash', '.ts']:
+            if args.debug:
+                log.debug(f"{segment_path} suffix is not in ['.mp4', '.m4s', '.dash', '.ts'], skip it")
             continue
         if args.init_path and segment_path.name == init_path.name:
+            if args.debug:
+                log.debug(f"{segment_path} is init_path , skip it")
             continue
+        if args.debug:
+            log.debug(f'start parseMedia for {segment_path}')
         _cues = parser.parseMedia(segment_path.read_bytes(), time)
 
         for cue in _cues:
-            if args.debug:
-                # 用于排查定位是哪个文件的
-                cue.file = segment_path.name
-                log.debug(cue)
+            cue.file = segment_path.name
             if len(cue.nestedCues) > 0:
                 loop_nestedCues(cues, cue.nestedCues, index, args.segment_time)
             if cue.payload != '':
@@ -117,6 +122,9 @@ def parse(args: CmdArgs):
         index += 1
     # 按Cue.startTime从小到大排序
     cues.sort(key=compare)
+    if args.debug:
+        log.debug(f'cues count {len(cues)}')
+    assert len(cues) > 0, 'ohh, it is a bug...'
     # 去重
     # 1. 如果当前行的endTime等于下一行的startTime 并且下一行内容与当前行相同 取下一行的endTime作为当前行的endTime 然后去除下一行
     # 2. 否则将下一行作为当前行 再次进行比较 直到比较结束

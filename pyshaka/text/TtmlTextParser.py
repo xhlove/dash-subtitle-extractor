@@ -141,7 +141,7 @@ class TtmlTextParser:
 
         spaceStyle = cueElement.getAttribute('xml:space') or 'default' if whitespaceTrim else 'preserve'
         localWhitespaceTrim = spaceStyle == 'default'
-        if cueElement.firstChild.nodeValue:
+        if cueElement.firstChild and cueElement.firstChild.nodeValue:
             # hasTextContent = re.match('\S', cueElement.firstChild.nodeValue)
             # \S 不匹配换行 但是js的test却会返回true
             # 所以python这里会误判 那么strip下达到修复效果
@@ -183,7 +183,7 @@ class TtmlTextParser:
                 payload = payload.strip()
                 payload = re.sub('\s+', ' ', payload)
         else:
-            for childNode in cueElement.childNodes:
+            for childNode in [_ for _ in cueElement.childNodes]:
                 nestedCue = TtmlTextParser.parseCue_(
                     childNode,
                     offset,
