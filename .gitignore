@@ -4,6 +4,7 @@ node_modules
 __pycache__
 test/dashvtt_subtitle_WVTT_zh-TW
 test/ttml_test
+test/id_wvtt
 test/ismttml_text_TTML_pol
 *.exe
 *.log
