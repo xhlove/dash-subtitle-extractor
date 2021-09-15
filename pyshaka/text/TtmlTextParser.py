@@ -178,7 +178,6 @@ class TtmlTextParser:
                 break
         if flag:
             payload: str = cueElement.firstChild.nodeValue
-            # print("cueElement.textContent", payload)
             if localWhitespaceTrim:
                 payload = payload.strip()
                 payload = re.sub('\s+', ' ', payload)
