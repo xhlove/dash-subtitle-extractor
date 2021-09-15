@@ -70,8 +70,8 @@ optional arguments:
 e.g.
 
 ```bash
-python -m pyshaka.main --init-path "test/dashvtt_subtitle_WVTT_zh-TW/init.mp4" --segments-path "test/dashvtt_subtitle_WVTT_zh-TW"
-python -m pyshaka.main --segments-path "test/ismttml_text_TTML_pol" --segment-time 60
+python -m pyshaka.main --init-path "test/dashvtt_subtitle_WVTT_zh-TW/init.mp4" --segments-path "test/dashvtt_subtitle_WVTT_zh-TW" --type wvtt
+python -m pyshaka.main --segments-path "test/ismttml_text_TTML_pol" --segment-time 60 --type ttml
 ```
 
 单文件需要先使用[mp4split.exe](https://github.com/nilaoda/Mp4SubtitleParser/blob/main/bin/mp4split.exe)分割

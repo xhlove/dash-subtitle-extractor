@@ -97,7 +97,7 @@ def parse(args: CmdArgs):
     for segment_path in segments_path.iterdir():
         if segment_path.is_dir():
             continue
-        if segment_path.suffix not in ['.mp4', 'm4s', 'dash', '.ts']:
+        if segment_path.suffix not in ['.mp4', '.m4s', '.dash', '.ts']:
             continue
         if args.init_path and segment_path.name == init_path.name:
             continue
