@@ -1,3 +1,4 @@
+import sys
 import logging
 import datetime
 from pathlib import Path
@@ -6,7 +7,10 @@ from pathlib import Path
 def setup_logger(name: str, write_to_file: bool = False) -> logging.Logger:
     formatter = logging.Formatter('%(asctime)s %(name)s %(filename)s %(lineno)s : %(levelname)s  %(message)s')
     log_time = datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    log_folder_path = Path(__name__.split('.')[0], 'logs')
+    if getattr(sys, 'frozen', False):
+        log_folder_path = Path(sys.executable).parent / 'logs'
+    else:
+        log_folder_path = Path(__file__).parent.parent / 'logs'
     if log_folder_path.exists() is False:
         log_folder_path.mkdir()
 
