@@ -2,7 +2,11 @@
 shaka/**/*.js
 node_modules
 __pycache__
-test
+dist
+build
+aaavb
+*.mp4
+*.dash
 *.exe
 *.log
 *.vtt
