@@ -34,6 +34,8 @@ class VttTextParser:
                     rootCue.payload = payload
                     return
             for childNode in childNodes:
+                if childNode.nodeValue and childNode.nodeValue.startswith('i>'):
+                    continue
                 VttTextParser.generateCueFromElement_(childNode, rootCue, cues, styles)
             rootCue.nestedCues = cues
         else:
