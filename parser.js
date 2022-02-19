@@ -128,8 +128,8 @@ try {
         let name = path.basename(pathname);
         // skip init segment
         if (init_segment && name == path.basename(init_segment)) return;
-        // now only allow mp4 file
-        if (!name.endsWith(".mp4")) return;
+        // now only allow mp4 and m4s file
+        if (!name.endsWith(".mp4") && !name.endsWith(".m4s")) return;
         let Segment = new Uint8Array(fs.readFileSync(pathname));
         let results = parser.parseMedia(Segment, time);
         // console.log(`${name} 解析完成`);

@@ -2,6 +2,53 @@
 
 Ttranslated from shaka-player project by xhlove.
 
+- output sample
+
+![](images/Snipaste_2022-02-19_11-36-50.png)
+
+# python移植版
+
+单文件需要先使用[mp4split.exe](https://github.com/nilaoda/Mp4SubtitleParser/blob/main/bin/mp4split.exe)分割
+
+## usage
+
+```bash
+pip install argparse
+```
+
+```bash
+usage: python -m pyshaka.main [OPTION]...
+
+A tool that to parse subtitle embedded in DASH stream
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -debug, --debug       debug is needed
+  -type TYPE, --type TYPE
+                        subtitle codec, only support wvtt and ttml now
+  -timescale TIMESCALE, --timescale TIMESCALE
+                        set timescale manually if no init segment
+  -init-path INIT_PATH, --init-path INIT_PATH
+                        init segment path
+  -segments-path SEGMENTS_PATH, --segments-path SEGMENTS_PATH
+                        segments folder path
+  -segment-time SEGMENT_TIME, --segment-time SEGMENT_TIME
+                        single segment duration, usually needed for ttml content, calculation method: d / timescale
+```
+
+e.g.
+
+```bash
+python -m pyshaka.main --init-path "test/dashvtt_subtitle_WVTT_zh-TW/init.mp4" --segments-path "test/dashvtt_subtitle_WVTT_zh-TW" --type wvtt
+python -m pyshaka.main --segments-path "test/ismttml_text_TTML_pol" --segment-time 60 --type ttml
+python -m pyshaka.main --segments-path "test/new" --type ttml
+```
+
+python移植版本只是完成了部分工作，早期是通过移植原版到node执行，如果你有兴趣知道如何移植为node本地执行，请点击下面按钮展开
+
+<details>
+<summary>node本地移植版</summary>
+
 # node本地移植版
 
 参考[移植shaka-player字幕解析部分为本地程序](移植shaka-player字幕解析部分为本地程序.md)
@@ -32,47 +79,4 @@ node parser_compiled.js --segments-path=test/ismttml_text_TTML_pol --type=ttml
 - --debug 可以输出一些debug信息
 
 如果要用测试命令记得解压`dashvtt_subtitle_WVTT_zh-TW.zip`和`ttml_test.zip`
-
-- wvtt
-
-![](images/Snipaste_2021-09-06_22-11-33.png)
-
-- ttml
-
-![](images/Snipaste_2021-09-06_23-54-31.png)
-
-# requirements
-
-> pip install argparse
-
-# usage
-
-```bash
-usage: python -m pyshaka.main [OPTION]...
-
-A tool that to parse subtitle embedded in DASH stream
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -debug, --debug       debug is needed
-  -type TYPE, --type TYPE
-                        subtitle codec, only support wvtt and ttml now
-  -timescale TIMESCALE, --timescale TIMESCALE
-                        set timescale manually if no init segment
-  -init-path INIT_PATH, --init-path INIT_PATH
-                        init segment path
-  -segments-path SEGMENTS_PATH, --segments-path SEGMENTS_PATH
-                        segments folder path
-  -segment-time SEGMENT_TIME, --segment-time SEGMENT_TIME
-                        single segment duration, usually needed for ttml content, calculation method: d / timescale
-```
-
-e.g.
-
-```bash
-python -m pyshaka.main --init-path "test/dashvtt_subtitle_WVTT_zh-TW/init.mp4" --segments-path "test/dashvtt_subtitle_WVTT_zh-TW" --type wvtt
-python -m pyshaka.main --segments-path "test/ismttml_text_TTML_pol" --segment-time 60 --type ttml
-python -m pyshaka.main --segments-path "test/new" --type ttml
-```
-
-单文件需要先使用[mp4split.exe](https://github.com/nilaoda/Mp4SubtitleParser/blob/main/bin/mp4split.exe)分割
+</details>
