@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List, Union
 from xml.dom.minidom import parseString, Node, Element, Text
-
+from xml.sax.saxutils import escape
 from pyshaka.text.Cue import Cue, defaultTextColor, fontStyle, fontWeight, textDecoration
 from pyshaka.log import log
 
@@ -22,7 +22,7 @@ class VttTextParser:
         if len(styles) == 0:
             VttTextParser.addDefaultTextColor_(styles)
         payload = VttTextParser.replaceColorPayload_(payload)
-        xmlPayload = '<span>' + payload + '</span>'
+        xmlPayload = '<span>' + escape(payload) + '</span>'
         elements = parseString(xmlPayload).getElementsByTagName('span') # type: List[Element]
         if len(elements) > 0 and elements[0]:
             element = elements[0]
