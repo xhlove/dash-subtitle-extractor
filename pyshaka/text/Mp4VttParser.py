@@ -182,7 +182,7 @@ class Mp4VttParser:
 
         payload = None
         _id = None
-        settings = None
+        settings = ''
 
         mp4parser = Mp4Parser()
         mp4parser = mp4parser.box('payl', Mp4Parser.allData(payl_callback))
