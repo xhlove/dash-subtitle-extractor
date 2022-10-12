@@ -88,7 +88,10 @@ class VttTextParser:
         newPayload = ''
         for i in range(len(payload)):
             if payload[i] == '/':
-                end = payload.index('>', i)
+                try:
+                    end = payload.index('>', i)
+                except ValueError:
+                    end = -1
                 if end <= i:
                     return payload
                 tagEnd = payload[i + 1:end]
